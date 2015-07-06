@@ -16,9 +16,12 @@ type(
 	}
 
 
+
+
+
 	Expression	interface {
 		ABNF()		string
-		Match([]byte)	(bool,[]byte,[]byte)
+		Match([]byte)	(bool,[]Target,[]byte)
 	}
 
 	ABNF_Concat	struct {
@@ -61,7 +64,6 @@ type(
 		abnf	string
 		get	func()Expression
 	}
-
 
 	ABNF_Single_ci	struct {
 		abnf	string
@@ -116,6 +118,23 @@ func abnf_star(min ,max int,b string) string {
 
 
 
+func (t Target) String() string {
+	if t.Rule != "" {
+		val := " "+t.Rule+"={"+string(t.Value)
+		for _,child := range t.Childs {
+			val= val+child.String()
+		}
+
+		return val+"} "
+	}
+
+	val := "{"+string(t.Value)
+	for _,child := range t.Childs {
+		val= val+child.String()
+	}
+
+	return val+"}"
+}
 
 
 
@@ -131,16 +150,16 @@ func	(abnf *ABNF_Concat)ABNF()	string {
 	return abnf.abnf
 }
 
-func	(abnf *ABNF_Concat)Match(buffer []byte)	(bool,[]byte,[]byte) {
+func	(abnf *ABNF_Concat)Match(buffer []byte)	(bool,[]Target,[]byte) {
 	end	:= buffer
-	resp	:= []byte{}
+	resp	:= []Target{}
 	for _,exp := range abnf.exprs {
 		var ok		bool
-		var t_resp	[]byte
+		var t_resp	[]Target
 
 		ok,t_resp,end = exp.Match(end);
 		if  !ok {
-			return	false, []byte{ }, buffer
+			return	false, []Target{ }, buffer
 		}
 		resp = append(resp, t_resp...)
 	}
@@ -162,7 +181,7 @@ func	(abnf *ABNF_Altern)ABNF()	string {
 	return abnf.abnf
 }
 
-func	(abnf *ABNF_Altern)Match(buffer []byte)	(bool,[]byte,[]byte) {
+func	(abnf *ABNF_Altern)Match(buffer []byte)	(bool,[]Target,[]byte) {
 	// " / " works right to left … not left to right like the rest
 	for i:=len(abnf.exprs)-1; i>=0 ; i-- {
 		if ok, buff,end := abnf.exprs[i].Match(buffer); ok {
@@ -170,7 +189,7 @@ func	(abnf *ABNF_Altern)Match(buffer []byte)	(bool,[]byte,[]byte) {
 		}
 	}
 
-	return	false, []byte{ }, buffer
+	return	false, []Target{ }, buffer
 }
 
 
@@ -188,17 +207,17 @@ func	(abnf *ABNF_Group)ABNF()	string {
 	return abnf.abnf
 }
 
-func	(abnf *ABNF_Group)Match(buffer []byte)	(bool,[]byte,[]byte) {
+func	(abnf *ABNF_Group)Match(buffer []byte)	(bool,[]Target,[]byte) {
 	end	:= buffer
-	resp	:= []byte{}
+	resp	:= []Target{}
 
 	for _,exp := range abnf.exprs {
 		var ok		bool
-		var t_resp	[]byte
+		var t_resp	[]Target
 
 		ok,t_resp,end = exp.Match(end);
 		if  !ok {
-			return	false, []byte{ }, buffer
+			return	false, []Target{ }, buffer
 		}
 		resp = append(resp, t_resp...)
 	}
@@ -220,10 +239,10 @@ func	(abnf *ABNF_Option)ABNF()	string {
 	return abnf.abnf
 }
 
-func	(abnf *ABNF_Option)Match(buffer []byte)	(bool,[]byte,[]byte) {
+func	(abnf *ABNF_Option)Match(buffer []byte)	(bool,[]Target,[]byte) {
 	ok,resp,end := abnf.expr.Match(buffer);
 	if  !ok {
-		return true, []byte{}, buffer
+		return true, []Target{}, buffer
 	}
 	return true, resp, end
 }
@@ -245,14 +264,14 @@ func	(abnf *ABNF_Range)ABNF()	string {
 	return abnf.abnf
 }
 
-func	(abnf *ABNF_Range)Match(buffer []byte)	(bool,[]byte,[]byte) {
+func	(abnf *ABNF_Range)Match(buffer []byte)	(bool,[]Target,[]byte) {
 	for _,extent := range abnf.extents {
 		if buffer[0] >= extent.start && buffer[0] <= extent.end {
-			return	true, buffer[0:1], buffer[1:]
+			return	true, []Target{ { Value: buffer[0:1] } }, buffer[1:]
 		}
 	}
 
-	return	false, []byte{ }, buffer
+	return	false, []Target{ }, buffer
 }
 
 
@@ -275,10 +294,10 @@ func	(abnf *ABNF_Star)ABNF()	string {
 	return abnf.abnf
 }
 
-func	(abnf *ABNF_Star)Match(buffer []byte)	(bool,[]byte,[]byte) {
+func	(abnf *ABNF_Star)Match(buffer []byte)	(bool,[]Target,[]byte) {
 	idx	:= 0
 	end	:= buffer
-	resp	:= []byte{}
+	resp	:= []Target{}
 
 	for {
 		ok,t_resp,t_end := abnf.expr.Match(end);
@@ -299,7 +318,7 @@ func	(abnf *ABNF_Star)Match(buffer []byte)	(bool,[]byte,[]byte) {
 	}
 
 	if idx < abnf.min {
-		return	false, []byte{ }, buffer
+		return	false, []Target{ }, buffer
 	}
 
 	return true, resp, end
@@ -311,7 +330,7 @@ func	(abnf *ABNF_Assign)ABNF()	string {
 	return abnf.abnf
 }
 
-func	(abnf *ABNF_Assign)Match(buffer []byte)	(bool,[]byte,[]byte) {
+func	(abnf *ABNF_Assign)Match(buffer []byte)	(bool,[]Target,[]byte) {
 	return abnf.expr.Match(buffer)
 }
 
@@ -321,8 +340,13 @@ func	(abnf *ABNF_Ref)ABNF()	string {
 	return abnf.abnf
 }
 
-func	(abnf *ABNF_Ref)Match(buffer []byte)	(bool,[]byte,[]byte) {
-	return abnf.get().Match(buffer)
+func	(abnf *ABNF_Ref)Match(buffer []byte)	(bool,[]Target,[]byte) {
+	if (abnf.abnf[0]|0x20) != abnf.abnf[0] {
+		return abnf.get().Match(buffer)
+	}
+
+	t,targets,end := abnf.get().Match(buffer)
+	return t, []Target{ { Rule: abnf.abnf, Childs:targets } }, end
 }
 
 
@@ -345,25 +369,25 @@ func	(abnf *ABNF_Single_ci)ABNF()	string {
 	return abnf.abnf
 }
 
-func	(abnf *ABNF_Single_ci)Match(buffer []byte)	(bool,[]byte,[]byte) {
+func	(abnf *ABNF_Single_ci)Match(buffer []byte)	(bool,[]Target,[]byte) {
 	if len(abnf.tokens) > len(buffer) {
-		return false, []byte{ }, buffer
+		return false, []Target{ }, buffer
 	}
 
 	for i,tok := range abnf.tokens {
 		switch {
 			case (tok >= 'a' && tok <= 'z') || (tok >= 'A' && tok <= 'Z'):
 				if (tok|0x20) != (buffer[i]|0x20) {
-					return	false, []byte{ }, buffer
+					return	false, []Target{ }, buffer
 				}
 
 			default:
 				if tok != buffer[i] {
-					return	false, []byte{ }, buffer
+					return	false, []Target{ }, buffer
 				}
 		}
 	}
-	return	true, buffer[0:len(abnf.tokens)], buffer[len(abnf.tokens):]
+	return	true, []Target{ { Value: buffer[0:len(abnf.tokens)] } }, buffer[len(abnf.tokens):]
 }
 
 
@@ -381,18 +405,18 @@ func	(abnf *ABNF_Single_cs)ABNF()	string {
 	return abnf.abnf
 }
 
-func	(abnf *ABNF_Single_cs)Match(buffer []byte)	(bool,[]byte,[]byte) {
+func	(abnf *ABNF_Single_cs)Match(buffer []byte)	(bool,[]Target,[]byte) {
 	if len(abnf.tokens) > len(buffer) {
-		return false, []byte{ }, buffer
+		return false, []Target{ }, buffer
 	}
 
 	for i,tok := range abnf.tokens {
 		if tok != buffer[i] {
-			return	false, []byte{ }, buffer
+			return	false, []Target{ }, buffer
 		}
 	}
 
-	return	true, buffer[0:len(abnf.tokens)], buffer[len(abnf.tokens):]
+	return	true, []Target{ { Value: buffer[0:len(abnf.tokens)] } }, buffer[len(abnf.tokens):]
 }
 
 
@@ -407,15 +431,15 @@ func	(abnf *ABNF_Single_byte)ABNF()	string {
 	return abnf.abnf
 }
 
-func	(abnf *ABNF_Single_byte)Match(buffer []byte)	(bool,[]byte,[]byte) {
+func	(abnf *ABNF_Single_byte)Match(buffer []byte)	(bool,[]Target,[]byte) {
 	if len(abnf.tokens) > len(buffer) {
-		return false, []byte{ }, buffer
+		return false, []Target{ }, buffer
 	}
 
 	for i,tok := range abnf.tokens {
 		if tok != buffer[i] {
-			return	false, []byte{ }, buffer
+			return	false, []Target{ }, buffer
 		}
 	}
-	return	true, buffer[0:len(abnf.tokens)], buffer[len(abnf.tokens):]
+	return	true, []Target{ { Value: buffer[0:len(abnf.tokens)] } }, buffer[len(abnf.tokens):]
 }

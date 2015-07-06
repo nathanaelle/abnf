@@ -107,10 +107,11 @@ func Test_ABNF_ABNF_5234(t *testing.T) {
 	sort.Strings(ret)
 	sorted_ABNF_ABNF := []byte(strings.Join(ret,"\r\n"))
 
-	tested_ABNF := ABNF5234().Valid(sorted_ABNF_ABNF)
+	tested_ABNF,target := ABNF5234().Valid(sorted_ABNF_ABNF)
 	if !tested_ABNF {
 		t.Errorf("errors found in \n---------\n%s\n---------\n", ABNF_ABNF_5234)
 	}
+	t.Logf("%s\n",target.String())
 }
 
 func Test_ABNF_7405(t *testing.T) {
@@ -130,10 +131,11 @@ func Test_ABNF_ABNF_7405(t *testing.T) {
 	sort.Strings(ret)
 	sorted_ABNF_ABNF := []byte(strings.Join(ret,"\r\n"))
 
-	tested_ABNF := ABNF7405().Valid(sorted_ABNF_ABNF)
+	tested_ABNF,target := ABNF7405().Valid(sorted_ABNF_ABNF)
 	if !tested_ABNF {
 			t.Errorf("errors found in \n---------\n%s\n---------\n", ABNF_ABNF_7405)
 	}
+	t.Logf("%s\n",target.String())
 }
 
 

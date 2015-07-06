@@ -35,10 +35,12 @@ func (g Grammar)String() string {
 }
 
 
-func (g Grammar)Valid(buffer []byte) (bool) {
+func (g Grammar)Valid(buffer []byte) (bool,Target) {
 	if start,ok := g._get_token(g.start); ok {
-		valid,_,_ := start.Match(buffer)
-		return valid
+		valid,t,_ := start.Match(buffer)
+
+
+		return valid, Target{ Childs: t}
 	}
 
 	panic("unkown rule : "+ g.start)
