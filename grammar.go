@@ -37,7 +37,8 @@ func (g Grammar)String() string {
 
 func (g Grammar)Valid(buffer []byte) (bool) {
 	if start,ok := g._get_token(g.start); ok {
-		return start.Verify(buffer)
+		valid,_,_ := start.Match(buffer)
+		return valid
 	}
 
 	panic("unkown rule : "+ g.start)
@@ -54,9 +55,9 @@ func (g Grammar)set(name string, expr Expression) {
 		panic("token already set : "+name)
 	}
 
-	g.tokens[k] = Expression{
+	g.tokens[k] = &ABNF_Assign {
 		abnf: name + " = " + expr.ABNF(),
-		match: expr.match,
+		expr: expr,
 	}
 }
 
@@ -71,22 +72,12 @@ func (g Grammar)_get_token(name string) (Expression,bool) {
 }
 
 func (g Grammar)get(name string) Expression {
-	return Expression{
+	return &ABNF_Ref {
 		abnf: name,
-		match: func(buffer []byte) (bool,[]byte,[]byte) {
+		get: func() Expression {
 			if ret,ok := g._get_token(name); ok {
-				return ret.match(buffer)
-
-				/*
-				fl,resp,end := ret.match(buffer)
-				switch fl {
-					case true:	log.Printf(" -- %30s\t[%s]\n",name,string(resp))
-					case false:	log.Printf(" !! %30s\n",name,)
-				}
-				return fl,resp,end
-				*/
+				return ret
 			}
-
 			panic("expression doesn't exist : "+ name)
 		},
 	}
