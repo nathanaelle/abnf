@@ -5,6 +5,10 @@
 
 abnf is a library for coping with ABNF grammar in Go.
 
+## Which ABNC RFC is supported ?
+
+  * RFC 5234 with errata 2968 3076
+  * RFC 7405
 
 ### Working Features
 

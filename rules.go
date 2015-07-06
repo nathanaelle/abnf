@@ -81,69 +81,6 @@ type(
 )
 
 
-
-func abnf_single_tok(b byte)(bool,string){
-	// Holly shit ! I'm too tired to write the correct code so I use this stoopid switch
-	switch {
-		case b>='0' && b<='9':		return true,string([]byte{b})
-		case b>='A' && b<='Z':		return true,string([]byte{b})
-		case b>='a' && b<='z':		return true,string([]byte{b})
-		case b=='(' || b==')':		return true,string([]byte{b})
-		case b=='{' || b=='}':		return true,string([]byte{b})
-		case b=='[' || b==']':		return true,string([]byte{b})
-		case b=='<' || b=='>':		return true,string([]byte{b})
-		case b=='!':			return true,string([]byte{b})
-		case b=='.':			return true,string([]byte{b})
-		case b=='-':			return true,string([]byte{b})
-		case b=='%':			return true,string([]byte{b})
-		case b==';':			return true,string([]byte{b})
-		case b=='=':			return true,string([]byte{b})
-		case b=='/':			return true,string([]byte{b})
-		case b=='*':			return true,string([]byte{b})
-		default:			return false,fmt.Sprintf("%%x%02X",b)
-	}
-}
-
-
-func abnf_single_c(tokens []byte,start string) string {
-	ret := start
-	quote_prev := false
-	init := true
-
-	for _,tok := range tokens {
-		q, buff := abnf_single_tok(tok)
-		switch {
-			case init && !q:
-				init = false
-				ret =  ret + buff
-
-			case init &&  q:
-				quote_prev = true
-				init = false
-				ret = ret + "\""+buff
-
-			case  quote_prev &&  q:
-				ret = ret+buff
-
-			case !quote_prev && !q:
-				ret = ret+" "+buff
-
-			case !quote_prev &&  q:
-				quote_prev = true
-				ret = ret+" \""+buff
-
-			case quote_prev &&  !q:
-				quote_prev = false
-				ret = ret+"\" "+buff
-		}
-	}
-	if quote_prev {
-		ret = ret + "\""
-	}
-
-	return ret
-}
-
 func abnf_single_byte(tokens []byte) string {
 	ret := make([]string, 0, len(tokens))
 
@@ -399,7 +336,7 @@ func	(abnf *ABNF_Ref)Match(buffer []byte)	(bool,[]byte,[]byte) {
 
 func	single_ci(single ...byte) Expression {
 	return &ABNF_Single_ci {
-		abnf: abnf_single_c(single,""),
+		abnf: fmt.Sprintf("\"%s\"",string(single)),
 		tokens: single,
 	}
 }
@@ -435,7 +372,7 @@ func	(abnf *ABNF_Single_ci)Match(buffer []byte)	(bool,[]byte,[]byte) {
 
 func	single_cs(single ...byte) Expression {
 	return &ABNF_Single_cs {
-		abnf: abnf_single_c(single,"%s "),
+		abnf: fmt.Sprintf("%s\"%s\"",string(single)),
 		tokens: single,
 	}
 }
