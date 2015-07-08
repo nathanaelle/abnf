@@ -128,6 +128,10 @@ func (t Target) String() string {
 		return val+"} "
 	}
 
+	if len(t.Childs) == 0 {
+		return string(t.Value)
+	}
+
 	val := "{"+string(t.Value)
 	for _,child := range t.Childs {
 		val= val+child.String()

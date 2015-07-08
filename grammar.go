@@ -39,8 +39,7 @@ func (g Grammar)Valid(buffer []byte) (bool,Target) {
 	if start,ok := g._get_token(g.start); ok {
 		valid,t,_ := start.Match(buffer)
 
-
-		return valid, Target{ Childs: t}
+		return valid, Target{ Childs: t }
 	}
 
 	panic("unkown rule : "+ g.start)
