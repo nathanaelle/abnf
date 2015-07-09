@@ -9,15 +9,6 @@ type(
 		start,end	byte
 	}
 
-	Target		struct {
-		Childs	[]Target
-		Rule	string
-		Value	[]byte
-	}
-
-
-
-
 
 	Expression	interface {
 		ABNF()		string
@@ -79,7 +70,6 @@ type(
 		abnf	string
 		tokens	[]byte
 	}
-
 )
 
 
@@ -108,42 +98,21 @@ func abnfs(exprs []Expression) []string {
 func abnf_star(min ,max int,b string) string {
 	switch {
 		case min == 0 && max == 0:	return fmt.Sprintf("*%s",b)
-		case min == max:		return fmt.Sprintf("%d %s",min,b)
-		case min == 0:			return fmt.Sprintf("*%d %s",max,b)
+		case min == max:		return fmt.Sprintf("%d%s",min,b)
+		case min == 0:			return fmt.Sprintf("*%d%s",max,b)
 		case max == 0:			return fmt.Sprintf("%d*%s",min,b)
-		default:			return fmt.Sprintf("%d*%d %s",min,max,b)
+		default:			return fmt.Sprintf("%d*%d%s",min,max,b)
 	}
-}
-
-
-
-
-func (t Target) String() string {
-	if t.Rule != "" {
-		val := " "+t.Rule+"={"+string(t.Value)
-		for _,child := range t.Childs {
-			val= val+child.String()
-		}
-
-		return val+"} "
-	}
-
-	if len(t.Childs) == 0 {
-		return string(t.Value)
-	}
-
-	val := "{"+string(t.Value)
-	for _,child := range t.Childs {
-		val= val+child.String()
-	}
-
-	return val+"}"
 }
 
 
 
 
 func concat(exprs ...Expression) Expression {
+	if len(exprs) == 1 {
+		return exprs[0]
+	}
+
 	return &ABNF_Concat {
 		abnf:	strings.Join( abnfs(exprs)," "),
 		exprs:	exprs,
@@ -155,6 +124,12 @@ func	(abnf *ABNF_Concat)ABNF()	string {
 }
 
 func	(abnf *ABNF_Concat)Match(buffer []byte)	(bool,[]Target,[]byte) {
+	if Verbose {
+		fmt.Printf("concat\t\t-> [%s]\n", string(abnf.abnf) )
+		fmt.Printf("\t\t-> [%s]\n", string(buffer) )
+	}
+
+
 	end	:= buffer
 	resp	:= []Target{}
 	for _,exp := range abnf.exprs {
@@ -166,6 +141,12 @@ func	(abnf *ABNF_Concat)Match(buffer []byte)	(bool,[]Target,[]byte) {
 			return	false, []Target{ }, buffer
 		}
 		resp = append(resp, t_resp...)
+		if Verbose {
+			for _,t := range t_resp {
+				fmt.Printf("concat\t\t-> [%s]\n", t.String() )
+			}
+		}
+
 	}
 	return true,resp,end
 }
@@ -175,6 +156,10 @@ func	(abnf *ABNF_Concat)Match(buffer []byte)	(bool,[]Target,[]byte) {
 
 
 func choice(exprs ...Expression) Expression {
+	if len(exprs) == 1 {
+		return exprs[0]
+	}
+
 	return &ABNF_Altern {
 		abnf:	strings.Join( abnfs(exprs)," / "),
 		exprs:	exprs,
@@ -245,8 +230,16 @@ func	(abnf *ABNF_Option)ABNF()	string {
 
 func	(abnf *ABNF_Option)Match(buffer []byte)	(bool,[]Target,[]byte) {
 	ok,resp,end := abnf.expr.Match(buffer);
+	if Verbose {
+		fmt.Printf("choice\t\t-> [%s]\n", abnf.abnf )
+	}
+
 	if  !ok {
 		return true, []Target{}, buffer
+	}
+
+	if Verbose {
+		fmt.Printf("\t\t-> [%s]\n", resp[0].String() )
 	}
 	return true, resp, end
 }
@@ -285,6 +278,10 @@ func	(abnf *ABNF_Range)Match(buffer []byte)	(bool,[]Target,[]byte) {
 
 
 func star(min ,max int, expr Expression) Expression {
+	if min == max && min == 1 {
+		return expr
+	}
+
 	return &ABNF_Star {
 		abnf:	abnf_star(min,max, expr.ABNF()),
 		min:	min,
@@ -345,9 +342,10 @@ func	(abnf *ABNF_Ref)ABNF()	string {
 }
 
 func	(abnf *ABNF_Ref)Match(buffer []byte)	(bool,[]Target,[]byte) {
-	if (abnf.abnf[0]|0x20) != abnf.abnf[0] {
-		return abnf.get().Match(buffer)
-	}
+	// test upper case
+	//if (abnf.abnf[0]|0x20) == abnf.abnf[0] {
+	//	return abnf.get().Match(buffer)
+	//}
 
 	t,targets,end := abnf.get().Match(buffer)
 	return t, []Target{ { Rule: abnf.abnf, Childs:targets } }, end
@@ -374,6 +372,12 @@ func	(abnf *ABNF_Single_ci)ABNF()	string {
 }
 
 func	(abnf *ABNF_Single_ci)Match(buffer []byte)	(bool,[]Target,[]byte) {
+	if Verbose {
+		fmt.Printf("single_ci\t-> %d | %d\n", len(abnf.tokens), len(buffer) )
+		fmt.Printf("\t\t-> [%s]\n", string(abnf.abnf) )
+		fmt.Printf("\t\t-> [%s]\n", string(buffer) )
+	}
+
 	if len(abnf.tokens) > len(buffer) {
 		return false, []Target{ }, buffer
 	}
@@ -391,6 +395,11 @@ func	(abnf *ABNF_Single_ci)Match(buffer []byte)	(bool,[]Target,[]byte) {
 				}
 		}
 	}
+
+	if Verbose {
+		fmt.Printf("\t\t-> [%s]\n", buffer[0:len(abnf.tokens)] )
+	}
+
 	return	true, []Target{ { Value: buffer[0:len(abnf.tokens)] } }, buffer[len(abnf.tokens):]
 }
 
@@ -410,6 +419,12 @@ func	(abnf *ABNF_Single_cs)ABNF()	string {
 }
 
 func	(abnf *ABNF_Single_cs)Match(buffer []byte)	(bool,[]Target,[]byte) {
+	if Verbose {
+		fmt.Printf("single_cs\t-> %d | %d\n", len(abnf.tokens), len(buffer) )
+		fmt.Printf("\t\t-> [%s]\n", string(abnf.abnf) )
+		fmt.Printf("\t\t-> [%s]\n", string(buffer) )
+	}
+
 	if len(abnf.tokens) > len(buffer) {
 		return false, []Target{ }, buffer
 	}
@@ -418,6 +433,10 @@ func	(abnf *ABNF_Single_cs)Match(buffer []byte)	(bool,[]Target,[]byte) {
 		if tok != buffer[i] {
 			return	false, []Target{ }, buffer
 		}
+	}
+
+	if Verbose {
+		fmt.Printf("\t\t-> [%s]\n", buffer[0:len(abnf.tokens)] )
 	}
 
 	return	true, []Target{ { Value: buffer[0:len(abnf.tokens)] } }, buffer[len(abnf.tokens):]
@@ -436,6 +455,12 @@ func	(abnf *ABNF_Single_byte)ABNF()	string {
 }
 
 func	(abnf *ABNF_Single_byte)Match(buffer []byte)	(bool,[]Target,[]byte) {
+	if Verbose {
+		fmt.Printf("single_byte\t-> %d | %d\n", len(abnf.tokens), len(buffer) )
+		fmt.Printf("\t\t-> [%s]\n", string(abnf.abnf) )
+		fmt.Printf("\t\t-> [%s]\n", string(buffer) )
+	}
+
 	if len(abnf.tokens) > len(buffer) {
 		return false, []Target{ }, buffer
 	}
@@ -445,5 +470,10 @@ func	(abnf *ABNF_Single_byte)Match(buffer []byte)	(bool,[]Target,[]byte) {
 			return	false, []Target{ }, buffer
 		}
 	}
+
+	if Verbose {
+		fmt.Printf("\t\t-> [%s]\n", buffer[0:len(abnf.tokens)] )
+	}
+
 	return	true, []Target{ { Value: buffer[0:len(abnf.tokens)] } }, buffer[len(abnf.tokens):]
 }

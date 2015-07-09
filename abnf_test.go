@@ -8,6 +8,78 @@ import (
 
 
 
+
+func Test_ABNF_String(t *testing.T) {
+	sorted_ABNF_ABNF:= normalize(strings.ToUpper(ABNF_ABNF_7405))
+	sorted_ABNF	:= normalize(strings.ToUpper(ABNF().String()))
+
+	if sorted_ABNF != sorted_ABNF_ABNF {
+		t.Errorf("difference between \n---------\n%s\n---------\nand\n---------\n%s\n---------\n ", sorted_ABNF_ABNF, sorted_ABNF )
+	}
+}
+
+func Test_ABNF_ABNF_5234(t *testing.T) {
+	sorted_ABNF_ABNF:= []byte(normalize(ABNF_ABNF_5234))
+	tested_ABNF,_	:= ABNF().Valid(sorted_ABNF_ABNF)
+
+	if !tested_ABNF {
+		t.Errorf("errors found in \n---------\n%s\n---------\n", ABNF_ABNF_5234)
+	}
+}
+
+func Test_ABNF_ABNF_7405(t *testing.T) {
+	sorted_ABNF_ABNF:= []byte(normalize(ABNF_ABNF_7405))
+	tested_ABNF,_	:= ABNF().Valid(sorted_ABNF_ABNF)
+
+	if !tested_ABNF {
+			t.Errorf("errors found in \n---------\n%s\n---------\n", ABNF_ABNF_7405)
+	}
+}
+
+
+
+
+
+func Benchmark_ABNF_call(b *testing.B) {
+	for i := 0; i < b.N; i++ {
+		ABNF()
+	}
+}
+
+func Benchmark_ABNF_String(b *testing.B) {
+	abnf := ABNF()
+
+	for i := 0; i < b.N; i++ {
+		abnf.String()
+	}
+}
+
+
+func Benchmark_ABNF_Valid(b *testing.B) {
+	sorted_ABNF_ABNF := normalize(ABNF_ABNF_5234)
+	abnf := ABNF()
+
+	for i := 0; i < b.N; i++ {
+		abnf.Valid([]byte(sorted_ABNF_ABNF))
+	}
+}
+
+
+
+
+
+
+func normalize(d string) string {
+	ret := strings.Split(d,"\n")
+	for i,_ := range ret {
+		ret[i] = strings.Trim(ret[i],"\r\n")
+	}
+	sort.Strings(ret)
+	return strings.Trim(strings.Join(ret,"\r\n"),"\r\n") + "\r\n"
+}
+
+
+
 // RFC 5234 errata 2968 3076 applied
 var ABNF_ABNF_5234 string = `rulelist = 1*(rule / (*WSP c-nl))
 rule = rulename defined-as elements c-nl
@@ -87,67 +159,3 @@ OCTET = %x00-FF
 SP = %x20
 VCHAR = %x21-7E
 WSP = SP / HTAB`
-
-
-
-func Test_ABNF_String(t *testing.T) {
-	ret := strings.Split(ABNF_ABNF_7405,"\n")
-	sort.Strings(ret)
-	sorted_ABNF_ABNF := strings.Join(ret,"\r\n")
-
-	tested_ABNF := ABNF().String()
-	if tested_ABNF != sorted_ABNF_ABNF {
-		t.Errorf("difference between \n---------\n%s\n---------\nand\n---------\n%s\n---------\n ", sorted_ABNF_ABNF, tested_ABNF )
-
-	}
-}
-
-func Test_ABNF_ABNF_5234(t *testing.T) {
-	ret := strings.Split(ABNF_ABNF_5234,"\n")
-	sort.Strings(ret)
-	sorted_ABNF_ABNF := []byte(strings.Join(ret,"\r\n"))
-
-	tested_ABNF,target := ABNF().Valid(sorted_ABNF_ABNF)
-	if !tested_ABNF {
-		t.Errorf("errors found in \n---------\n%s\n---------\n", ABNF_ABNF_5234)
-	}
-	t.Logf("%s\n",target.String())
-}
-
-func Test_ABNF_ABNF_7405(t *testing.T) {
-	ret := strings.Split(ABNF_ABNF_7405,"\n")
-	sort.Strings(ret)
-	sorted_ABNF_ABNF := []byte(strings.Join(ret,"\r\n"))
-
-	tested_ABNF,target := ABNF().Valid(sorted_ABNF_ABNF)
-	if !tested_ABNF {
-			t.Errorf("errors found in \n---------\n%s\n---------\n", ABNF_ABNF_7405)
-	}
-	t.Logf("%s\n",target.String())
-}
-
-
-func Benchmark_ABNF_call(b *testing.B) {
-	for i := 0; i < b.N; i++ {
-		ABNF()
-	}
-}
-
-func Benchmark_ABNF_String(b *testing.B) {
-	abnf := ABNF()
-	for i := 0; i < b.N; i++ {
-		abnf.String()
-	}
-}
-
-
-func Benchmark_ABNF_Valid(b *testing.B) {
-	ret := strings.Split(ABNF_ABNF_5234,"\n")
-	sort.Strings(ret)
-	sorted_ABNF_ABNF := []byte(strings.Join(ret,"\r\n"))
-
-	abnf := ABNF()
-	for i := 0; i < b.N; i++ {
-		abnf.Valid(sorted_ABNF_ABNF)
-	}
-}

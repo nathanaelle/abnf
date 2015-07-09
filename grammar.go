@@ -31,15 +31,19 @@ func (g Grammar)String() string {
 	}
 
 	sort.Strings(ret)
-	return strings.Join(ret, "\r\n")
+	return strings.Join(ret, "\r\n")+"\r\n"
 }
 
 
 func (g Grammar)Valid(buffer []byte) (bool,Target) {
 	if start,ok := g._get_token(g.start); ok {
-		valid,t,_ := start.Match(buffer)
+		valid,t,end := start.Match(buffer)
 
-		return valid, Target{ Childs: t }
+		if valid && len(end) == 0 {
+			return true, Target{ Childs: t }			
+		}
+		return false, Target{ Childs: t, Value: end }
+
 	}
 
 	panic("unkown rule : "+ g.start)
