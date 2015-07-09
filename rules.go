@@ -124,12 +124,6 @@ func	(abnf *ABNF_Concat)ABNF()	string {
 }
 
 func	(abnf *ABNF_Concat)Match(buffer []byte)	(bool,[]Target,[]byte) {
-	if Verbose {
-		fmt.Printf("concat\t\t-> [%s]\n", string(abnf.abnf) )
-		fmt.Printf("\t\t-> [%s]\n", string(buffer) )
-	}
-
-
 	end	:= buffer
 	resp	:= []Target{}
 	for _,exp := range abnf.exprs {
@@ -141,12 +135,6 @@ func	(abnf *ABNF_Concat)Match(buffer []byte)	(bool,[]Target,[]byte) {
 			return	false, []Target{ }, buffer
 		}
 		resp = append(resp, t_resp...)
-		if Verbose {
-			for _,t := range t_resp {
-				fmt.Printf("concat\t\t-> [%s]\n", t.String() )
-			}
-		}
-
 	}
 	return true,resp,end
 }
@@ -230,17 +218,11 @@ func	(abnf *ABNF_Option)ABNF()	string {
 
 func	(abnf *ABNF_Option)Match(buffer []byte)	(bool,[]Target,[]byte) {
 	ok,resp,end := abnf.expr.Match(buffer);
-	if Verbose {
-		fmt.Printf("choice\t\t-> [%s]\n", abnf.abnf )
-	}
 
 	if  !ok {
 		return true, []Target{}, buffer
 	}
 
-	if Verbose {
-		fmt.Printf("\t\t-> [%s]\n", resp[0].String() )
-	}
 	return true, resp, end
 }
 
@@ -342,12 +324,19 @@ func	(abnf *ABNF_Ref)ABNF()	string {
 }
 
 func	(abnf *ABNF_Ref)Match(buffer []byte)	(bool,[]Target,[]byte) {
-	// test upper case
-	//if (abnf.abnf[0]|0x20) == abnf.abnf[0] {
-	//	return abnf.get().Match(buffer)
-	//}
+	if Verbose {
+		fmt.Printf("Ref\t\t-> [%s]\n", string(abnf.abnf) )
+	}
+
 
 	t,targets,end := abnf.get().Match(buffer)
+	if Verbose {
+		fmt.Printf("Ref\t%t\t<- [%s]\n", t, string(abnf.abnf) )
+		fmt.Printf("Ref\t\t<- [%s]\n", string(end) )
+		for _,t := range targets {
+			fmt.Printf("\t\t<- [%s]\n", t.String() )
+		}
+	}
 	return t, []Target{ { Rule: abnf.abnf, Childs:targets } }, end
 }
 

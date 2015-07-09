@@ -25,10 +25,19 @@ func Test_ABNF_SPF(t *testing.T) {
 	log_test(spf.Valid([]byte("v=spf1")))
 	log_test(spf.Valid([]byte("v=spf1 +all")))
 	log_test(spf.Valid([]byte("v=spf1 a -all")))
-
 	Verbose = true
-	log_test(spf.Valid([]byte("v=spf1 mx/30 mx:example.org/30 -all")))
+	log_test(spf.Valid([]byte("v=spf1 a:example.org -all")))
 	Verbose = false
+	log_test(spf.Valid([]byte("v=spf1 mx -all")))
+	log_test(spf.Valid([]byte("v=spf1 mx:example.org -all")))
+	log_test(spf.Valid([]byte("v=spf1 mx mx:example.org -all")))
+	log_test(spf.Valid([]byte("v=spf1 mx/30 mx:example.org/30 -all")))
+	log_test(spf.Valid([]byte("v=spf1 ptr -all")))
+	log_test(spf.Valid([]byte("v=spf1 ip4:192.0.2.128/28 -all")))
+	log_test(spf.Valid([]byte("v=spf1 include:example.com include:example.net -all")))
+	log_test(spf.Valid([]byte("v=spf1 mx include:mobile-users._spf.%{d} include:remote-users._spf.%{d} -all")))
+	log_test(spf.Valid([]byte("v=spf1 exists:%{ir}.%{l1r+}.%{d}")))
+
 
 }
 
@@ -38,9 +47,9 @@ func log_if_invalid(t *testing.T) func(bool,Target){
 		if !valid {
 			t.Errorf("valid SPF is not valid !")
 			for _,c := range tree.Childs {
-				t.Errorf("[%s]\n", c.String())
+				t.Logf("[%s]\n", c.String())
 			}
-			t.Errorf("--[%s]--\n", string(tree.Value))
+			t.Logf("--[%s]--\n", string(tree.Value))
 		}
 	}
 }
