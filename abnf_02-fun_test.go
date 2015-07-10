@@ -27,10 +27,10 @@ func Test_ABNF_for_EveryOne(t *testing.T) {
 	// using custom abnf_1 compilator to compile a new custome compilator abnf_2
 	abnf_2 := compile_new_ABNF_compilator( t, abnf_1, sorted_ABNF_7405 )
 
-	// using custom abnf_3 compilator to compile a new custome compilator abnf_2
+	// using custom abnf_2 compilator to compile a new custome compilator abnf_3
 	abnf_3 := compile_new_ABNF_compilator( t, abnf_2, sorted_ABNF_5234 )
 
-	// using custom abnf_4 compilator to compile a new custome compilator abnf_3
+	// using custom abnf_3 compilator to compile a new custome compilator abnf_4
 	abnf_4 := compile_new_ABNF_compilator( t, abnf_3, sorted_ABNF_7405 )
 
 	sorted_ABNF	:= normalize(strings.ToUpper(abnf_4.String()))
