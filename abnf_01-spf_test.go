@@ -25,9 +25,7 @@ func Test_ABNF_SPF(t *testing.T) {
 	log_test(spf.Valid([]byte("v=spf1")))
 	log_test(spf.Valid([]byte("v=spf1 +all")))
 	log_test(spf.Valid([]byte("v=spf1 a -all")))
-	Verbose = true
 	log_test(spf.Valid([]byte("v=spf1 a:example.org -all")))
-	Verbose = false
 	log_test(spf.Valid([]byte("v=spf1 mx -all")))
 	log_test(spf.Valid([]byte("v=spf1 mx:example.org -all")))
 	log_test(spf.Valid([]byte("v=spf1 mx mx:example.org -all")))
@@ -50,11 +48,18 @@ func log_if_invalid(t *testing.T) func(bool,Target){
 				t.Logf("[%s]\n", c.String())
 			}
 			t.Logf("--[%s]--\n", string(tree.Value))
+		} else {
+			tgt := tree.Drop("sp").Merge("","macro-literal","digit","alpha","qnum")
+			for _,c := range tgt.Childs {
+				t.Logf("[%s]\n", c.String())
+			}
 		}
 	}
 }
 
 
+//domain-spec = macro-string domain-end
+//domain-end = ("." toplabel [ "." ]) / macro-expand
 
 var ABNF_SPF string = `record = Version Terms *sp
 version = "v=spf1"
@@ -82,8 +87,7 @@ qnum = digit / %x31-39 digit / "1" 2digit / "2" %x30-34 digit / "25" %x30-35
 ip6-network = 6(h16 ":") ls32 / "::" 5(h16 ":") ls32 / [ h16 ] "::" 4(h16 ":") ls32 / [ *1(h16 ":") h16 ] "::" 3(h16 ":") ls32 / [ *2(h16 ":") h16 ] "::" 2(h16 ":") ls32 / [ *3(h16 ":") h16 ] "::" h16 ":" ls32 / [ *4(h16 ":") h16 ] "::" ls32 / [ *5(h16 ":") h16 ] "::" h16 / [ *6(h16 ":") h16 ] "::"
 h16 = 1*4hexdig
 ls32 = (h16 ":" h16) / ip4-network
-domain-spec = macro-string domain-end
-domain-end = ("." toplabel [ "." ]) / macro-expand
+domain-spec = macro-string *("." macro-string) [ "." ]
 toplabel = (*alphanum alpha *alphanum) / (1*alphanum "-" *(alphanum / "-") alphanum)
 alphanum = alpha / digit
 explain-string = *(macro-string / sp)
