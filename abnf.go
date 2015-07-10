@@ -3,6 +3,7 @@ package abnf	// import "github.com/nathanaelle/abnf"
 import	(
 	"fmt"
 	"strconv"
+	"strings"
 )
 
 
@@ -39,27 +40,21 @@ func ABNF() ABNFEngine {
 	//  mail headers and have caused
 	//  interoperability problems in other
 	//  contexts.
-	// Do not use when defining mail
-	//  headers and use with caution in
-	//  other contexts.
+	// Do not use when defining mail headers and use with caution in other contexts.
 	g.set("lwsp"	,star(0,0,group(choice(g.get("wsp"), concat(g.get("crlf"),g.get("wsp"))))))
 
-	// bracketed string of SP and VCHAR
-	//  without angles
-	// prose description, to be used as
-	//  last resort
+	// bracketed string of SP and VCHAR without angles
+	// prose description, to be used as last resort
 	g.set("prose-val", concat(single_ci('<'), star(0,0,group(choice(extents(0x20,0x3D), extents(0x3F,0x7E)))), single_ci('>')))
 
-	// series of concatenated bit values
-	//  or single ONEOF range
+	// series of concatenated bit values or single ONEOF range
 	g.set("bin-val", concat(single_ci('b'), star(1,0, g.get("bit") ), option( star(1,0,choice(group(single_ci('.'), star(1,0, g.get("bit") )), group(single_ci('-'),star(1,0, g.get("bit") )))))))
 	g.set("dec-val", concat(single_ci('d'), star(1,0, g.get("digit") ), option( star(1,0,choice(group(single_ci('.'), star(1,0, g.get("digit") )), group(single_ci('-'),star(1,0, g.get("digit") )))))))
 	g.set("hex-val", concat(single_ci('x'), star(1,0, g.get("hexdig") ), option( star(1,0,choice(group(single_ci('.'), star(1,0, g.get("hexdig") )), group(single_ci('-'),star(1,0, g.get("hexdig") )))))))
 	g.set("num-val", concat(single_ci('%'), group(choice( g.get("bin-val") , g.get("dec-val") , g.get("hex-val") ))))
 
 
-	// quoted string of SP and VCHAR
-	//  without DQUOTE
+	// quoted string of SP and VCHAR without DQUOTE
 	g.set("quoted-string", concat( g.get("dquote") , star(0,0,group(choice(extents(0x20,0x21), extents(0x23,0x7E)))), g.get("dquote") ))
 	g.set("case-insensitive-string", concat(option(single_ci('%','i')), g.get("quoted-string")))
 	g.set("case-sensitive-string", concat(single_ci('%','s'), g.get("quoted-string")))
@@ -78,13 +73,11 @@ func ABNF() ABNFEngine {
 	g.set("alternation", concat( g.get("Concatenation") , star(0,0,group(star(0,0, g.get("c-wsp") ), single_ci('/'), star(0,0, g.get("c-wsp") ), g.get("Concatenation") ))))
 	g.set("elements", concat( g.get("Alternation") , star(0,0, g.get("wsp") )))
 
-	// basic rules definition and
-	//  incremental alternatives
+	// basic rules definition and incremental alternatives
 	g.set("defined-as", concat(star(0,0, g.get("c-wsp") ), group(choice(single_ci('='),single_ci('=','/'))), star(0,0, g.get("c-wsp") )))
 	g.set("rulename", concat( g.get("alpha") , star(0,0,group( choice( g.get("alpha") , g.get("digit") , single_ci('-'))))))
 
-	// continues if next line starts
-	//  with white space
+	// continues if next line starts with white space
 	g.set("rule", concat( g.get("Rulename") , g.get("Defined-as")  , g.get("Elements") , g.get("c-nl") ))
 	g.set("rulelist", star(1,0,group(choice( g.get("Rule") , group(star(0,0, g.get("wsp") ), g.get("c-nl") )))))
 
@@ -101,7 +94,7 @@ func (ABNFEngine) Compile(T Target, start string) *Grammar {
 	for _,rule := range cleaned_target.Childs {
 		switch string(rule.Childs[1].Value) {
 			case "=":	g.set(string(rule.Childs[0].Value), compile(g,rule.Childs[2]))
-			default:	panic("don't know hwo to : "+ string(rule.Childs[1].Value) )
+			default:	panic("don't know hwo to : "+ rule.String())
 		}
 	}
 
@@ -113,31 +106,29 @@ func to_int(b[]byte,base int) int {
 	v,_ := strconv.ParseInt(string(b), base, 64)
 	return int(v)
 }
+
 func to_byte(b[]byte,base int) byte {
 	v,_ := strconv.ParseInt(string(b), base, 64)
 	return byte(v)
 }
 
 
+
+
+
+
 func compile(g *Grammar, target Target) Expression {
-	switch target.Rule {
-		case	"Elements":
-			return compile(g,target.Childs[0])
-
-		case	"Element":
-			return compile(g,target.Childs[0])
-
-		case	"Rulename":
+	switch strings.ToUpper(target.Rule) {
+		case	"RULENAME":
 			return g.get(string(target.Value))
 
-		case	"Group":
+		case	"GROUP":
 			return group(compile(g,target.Childs[1]))
 
-		case	"Option":
+		case	"OPTION":
 			return option(compile(g,target.Childs[1]))
 
-
-		case	"Alternation":
+		case	"ALTERNATION":
 			exprs := []Expression {}
 			for i,c := range target.Childs {
 				if i%2 == 0 {
@@ -147,7 +138,7 @@ func compile(g *Grammar, target Target) Expression {
 
 			return choice(exprs...)
 
-		case	"Concatenation":
+		case	"CONCATENATION":
 			exprs := []Expression {}
 			for _,c := range target.Childs {
 				exprs = append(exprs, compile(g,c))
@@ -156,7 +147,7 @@ func compile(g *Grammar, target Target) Expression {
 			return concat(exprs...)
 
 
-		case	"Repetition":
+		case	"REPETITION":
 			if len(target.Childs) == 1 {
 				return star(1,1,compile(g,target.Childs[0]))
 			}
@@ -186,16 +177,19 @@ func compile(g *Grammar, target Target) Expression {
 			return star(min,max,compile(g,target.Childs[1]))
 
 
-		case	"Char-val":
-			return compile(g,target.Childs[0])
+		case	"QUOTED-STRING":
+			return single_ci(target.Value[1:len(target.Value)-1]...)
 
-		case	"Case-insensitive-string":
-			return single_ci(target.Childs[0].Value[1:len(target.Childs[0].Value)-1]...)
+		case	"CASE-INSENSITIVE-STRING":
+			return mutator_ci(compile(g,target.Childs[len(target.Childs)-1]))
 
-		case	"Num-val":
+		case	"CASE-SENSITIVE-STRING":
+			return mutator_cs(compile(g,target.Childs[1]))
+
+		case	"NUM-VAL":
 			return compile(g,target.Childs[1])
 
-		case	"hex-val":
+		case	"HEX-VAL":
 			if len(target.Childs) == 2 {
 				min := to_byte(target.Childs[1].Value,16)
 				return single_byte(min)
@@ -206,10 +200,9 @@ func compile(g *Grammar, target Target) Expression {
 				max := to_byte(target.Childs[3].Value,16)
 				return extents(min,max)
 			}
-			fmt.Println("Don't know how to cope with "+target.String() )
 			panic("Don't know how to cope with "+target.String() )
 
-		case	"dec-val":
+		case	"DEC-VAL":
 			if len(target.Childs) == 2 {
 				min := to_byte(target.Childs[1].Value,10)
 				return single_byte(min)
@@ -220,12 +213,31 @@ func compile(g *Grammar, target Target) Expression {
 				max := to_byte(target.Childs[3].Value,10)
 				return extents(min,max)
 			}
-			fmt.Println("Don't know how to cope with "+target.String() )
 			panic("Don't know how to cope with "+target.String() )
 
 
 		default:
-			fmt.Println("Don't know how to cope with "+target.String() )
+			if len(target.Childs) > 0 && len(target.Value) > 0 {
+				panic("Don't know how to cope with "+target.String() )
+			}
+
+			if len(target.Childs) == 0 && len(target.Value) == 0 {
+				panic("Don't know how to cope with "+target.String() )
+			}
+
+
+			if len(target.Childs) == 0 && len(target.Value) > 0 {
+				return single_cs(target.Value...)
+			}
+
+			if len(target.Childs) == 1 {
+				return compile(g,target.Childs[0])
+			}
+
+			fmt.Println("Don't know how to cope with "+target.Rule )
+			for _,c := range target.Childs {
+				fmt.Println("[", c.String() ,"]")
+			}
 			panic("Don't know how to cope with "+target.String() )
 	}
 }

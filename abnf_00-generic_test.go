@@ -81,6 +81,7 @@ func normalize(d string) string {
 
 
 // RFC 5234 errata 2968 3076 applied
+// char-val is a quoted-string as in 7405
 var ABNF_ABNF_5234 string = `rulelist = 1*(rule / (*WSP c-nl))
 rule = rulename defined-as elements c-nl
 rulename = ALPHA *(ALPHA / DIGIT / "-")
@@ -96,7 +97,8 @@ repeat = 1*DIGIT / (*DIGIT "*" *DIGIT)
 element = rulename / group / option / char-val / num-val / prose-val
 group = "(" *c-wsp alternation *c-wsp ")"
 option = "[" *c-wsp alternation *c-wsp "]"
-char-val = DQUOTE *(%x20-21 / %x23-7E) DQUOTE
+char-val = quoted-string
+quoted-string = DQUOTE *(%x20-21 / %x23-7E) DQUOTE
 num-val = "%" (bin-val / dec-val / hex-val)
 bin-val = "b" 1*BIT [ 1*("." 1*BIT) / ("-" 1*BIT) ]
 dec-val = "d" 1*DIGIT [ 1*("." 1*DIGIT) / ("-" 1*DIGIT) ]

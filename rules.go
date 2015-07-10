@@ -109,9 +109,9 @@ func abnf_star(min ,max int,b string) string {
 
 
 func concat(exprs ...Expression) Expression {
-	if len(exprs) == 1 {
+	/*if len(exprs) == 1 {
 		return exprs[0]
-	}
+	}*/
 
 	return &ABNF_Concat {
 		abnf:	strings.Join( abnfs(exprs)," "),
@@ -144,9 +144,9 @@ func	(abnf *ABNF_Concat)Match(buffer []byte)	(bool,[]Target,[]byte) {
 
 
 func choice(exprs ...Expression) Expression {
-	if len(exprs) == 1 {
+	/*if len(exprs) == 1 {
 		return exprs[0]
-	}
+	}*/
 
 	return &ABNF_Altern {
 		abnf:	strings.Join( abnfs(exprs)," / "),
@@ -356,6 +356,30 @@ func	single_ci(single ...byte) Expression {
 	}
 }
 
+func	mutator_ci(expr Expression) Expression {
+	switch expr.(type) {
+		case *ABNF_Single_ci:
+			return expr
+
+		case *ABNF_Single_cs:
+			tokens := expr.(*ABNF_Single_cs).tokens
+			return &ABNF_Single_ci {
+				abnf: fmt.Sprintf("\"%s\"",string(tokens)),
+				tokens: tokens,
+			}
+
+		case *ABNF_Single_byte:
+			tokens := expr.(*ABNF_Single_byte).tokens
+			return &ABNF_Single_ci {
+				abnf: fmt.Sprintf("\"%s\"",string(tokens)),
+				tokens: tokens,
+			}
+	}
+	panic("WTF !"+expr.ABNF())
+}
+
+
+
 func	(abnf *ABNF_Single_ci)ABNF()	string {
 	return abnf.abnf
 }
@@ -398,10 +422,35 @@ func	(abnf *ABNF_Single_ci)Match(buffer []byte)	(bool,[]Target,[]byte) {
 
 func	single_cs(single ...byte) Expression {
 	return &ABNF_Single_cs {
-		abnf: fmt.Sprintf("%s\"%s\"",string(single)),
+		abnf: fmt.Sprintf("%%s\"%s\"",string(single)),
 		tokens: single,
 	}
 }
+
+func	mutator_cs(expr Expression) Expression {
+	switch expr.(type) {
+		case *ABNF_Single_cs:
+			return expr
+
+		case *ABNF_Single_ci:
+			tokens := expr.(*ABNF_Single_ci).tokens
+			return &ABNF_Single_cs {
+				abnf: fmt.Sprintf("%%s\"%s\"",string(tokens)),
+				tokens: tokens,
+			}
+
+		case *ABNF_Single_byte:
+			tokens := expr.(*ABNF_Single_byte).tokens
+			return &ABNF_Single_cs {
+				abnf: fmt.Sprintf("%%s\"%s\"",string(tokens)),
+				tokens: tokens,
+			}
+	}
+	panic("WTF !"+expr.ABNF())
+}
+
+
+
 
 func	(abnf *ABNF_Single_cs)ABNF()	string {
 	return abnf.abnf
@@ -432,12 +481,40 @@ func	(abnf *ABNF_Single_cs)Match(buffer []byte)	(bool,[]Target,[]byte) {
 }
 
 
+
+
+
 func	single_byte(single ...byte) Expression {
 	return &ABNF_Single_byte {
 		abnf: abnf_single_byte(single),
 		tokens: single,
 	}
 }
+
+func	mutator_byte(expr Expression) Expression {
+	switch expr.(type) {
+		case *ABNF_Single_byte:
+			return expr
+
+		case *ABNF_Single_ci:
+			tokens := expr.(*ABNF_Single_ci).tokens
+			return &ABNF_Single_byte {
+				abnf: abnf_single_byte(tokens),
+				tokens: tokens,
+			}
+
+		case *ABNF_Single_cs:
+			tokens := expr.(*ABNF_Single_cs).tokens
+			return &ABNF_Single_byte {
+				abnf: abnf_single_byte(tokens),
+				tokens: tokens,
+			}
+	}
+	panic("WTF !"+expr.ABNF())
+}
+
+
+
 
 func	(abnf *ABNF_Single_byte)ABNF()	string {
 	return abnf.abnf

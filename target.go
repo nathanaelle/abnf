@@ -1,14 +1,18 @@
 package abnf	// import "github.com/nathanaelle/abnf"
 import	(
+        "strings"
 )
 
 func inSlice(a string, list []string) bool {
-    for _, b := range list {
-        if b == a {
-            return true
+        upper_a := strings.ToUpper(a)
+
+        for _, b := range list {
+                if strings.ToUpper(b) == upper_a {
+                        return true
+                }
         }
-    }
-    return false
+
+        return false
 }
 
 type	Target		struct {
@@ -83,7 +87,7 @@ func (target Target) Merge(rules ...string) Target {
 			tmp_t = t_c
 			continue
 		}
-		if tmp_t.Rule != t_c.Rule {
+		if strings.ToUpper(tmp_t.Rule) != strings.ToUpper(t_c.Rule) {
 			childs = append(childs, tmp_t )
 			tmp_t = t_c
 			continue
